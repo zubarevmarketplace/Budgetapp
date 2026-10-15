@@ -5,7 +5,7 @@
 
 ## Как начать пользоваться
 
-1. Открой ссылку в браузере телефона: **https://zubarevmarketplace.github.io/Budgetapp/**
+1. Открой ссылку в браузере телефона: **https://zubarevlab.ru/Budgetapp/** (то же самое: https://zubarevmarketplace.github.io/Budgetapp/)
 2. Добавь на домашний экран, чтобы это было как обычное приложение:
    - iPhone (Safari): кнопка «Поделиться» → «На экран „Домой“».
    - Android (Chrome): меню ⋮ → «Добавить на главный экран» (или «Установить приложение»).
