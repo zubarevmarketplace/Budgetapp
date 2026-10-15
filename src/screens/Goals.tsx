@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { TxDraft } from '../components/AddSheet'
+import { ConfirmButton } from '../components/ConfirmButton'
 import { EmojiPicker } from '../components/EmojiPicker'
 import { Progress } from '../components/Progress'
 import { Sheet } from '../components/Sheet'
@@ -153,7 +154,6 @@ function GoalSheet({ goal, onClose, nextOrder }: { goal: Partial<Goal> | null; o
 
   async function remove() {
     if (goal?.id === undefined) return
-    if (!confirm('Удалить цель? Переводы останутся в истории.')) return
     await db.goals.delete(goal.id)
     onClose()
   }
@@ -176,11 +176,7 @@ function GoalSheet({ goal, onClose, nextOrder }: { goal: Partial<Goal> | null; o
       </div>
       {error && <p className="mt-3 text-sm font-medium text-accent">{error}</p>}
       <div className="mt-5 flex gap-3">
-        {goal?.id !== undefined && (
-          <button type="button" onClick={remove} className="btn-ghost text-accent">
-            Удалить
-          </button>
-        )}
+        {goal?.id !== undefined && <ConfirmButton label="Удалить" confirmLabel="Точно удалить?" onConfirm={remove} className="btn-ghost text-accent" />}
         <button type="button" onClick={save} className="btn-primary flex-1">
           Сохранить
         </button>

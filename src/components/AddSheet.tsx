@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db, type Transaction, type TxType } from '../db'
-import { today } from '../lib/dates'
-import { parseAmount } from '../lib/format'
+import { today, toISO } from '../lib/dates'
+import { money, parseAmount } from '../lib/format'
 import { isSavingAccount } from '../lib/stats'
 import { LAST_ACCOUNT_KEY, type Data } from '../lib/useData'
+import { ConfirmButton } from './ConfirmButton'
 import { Sheet } from './Sheet'
 
 export type TxDraft = Partial<Transaction>
@@ -11,6 +12,8 @@ export type TxDraft = Partial<Transaction>
 interface Props {
   open: boolean
   onClose: () => void
+  /** Вызывается после сохранения с короткой подписью для уведомления. */
+  onSaved?: (text: string) => void
   data: Data
   /** Полная запись для редактирования (с id) или подсказка полей для новой. */
   initial?: TxDraft
@@ -18,10 +21,20 @@ interface Props {
 
 type Mode = 'expense' | 'income' | 'transfer'
 
-export function AddSheet({ open, onClose, data, initial }: Props) {
+export function AddSheet({ open, onClose, onSaved, data, initial }: Props) {
   const { accounts, categories, goals } = data
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts])
-  const activeCategories = useMemo(() => categories.filter((c) => !c.archived), [categories])
+  // Категории: самые частые за последние 90 дней — первыми, лимитные («ништяки») при равенстве выше.
+  const activeCategories = useMemo(() => {
+    const since = new Date(Date.now() - 90 * 86400000)
+    const cutoff = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`
+    const usage = new Map<number, number>()
+    for (const t of data.transactions) {
+      if (t.type !== 'expense' || t.categoryId === undefined || t.date < cutoff) continue
+      usage.set(t.categoryId, (usage.get(t.categoryId) ?? 0) + 1)
+    }
+    return categories.filter((c) => !c.archived).sort((a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0) || a.order - b.order)
+  }, [categories, data.transactions])
   const activeGoals = useMemo(() => goals.filter((g) => !g.done), [goals])
 
   const [mode, setMode] = useState<Mode>('expense')
@@ -81,12 +94,14 @@ export function AddSheet({ open, onClose, data, initial }: Props) {
     if (editing) await db.transactions.update(initial!.id!, tx)
     else await db.transactions.add(tx as Transaction)
     if (mode === 'expense') localStorage.setItem(LAST_ACCOUNT_KEY, String(accountId))
+    const cat = activeCategories.find((c) => c.id === categoryId)
+    const what = mode === 'expense' ? `${cat?.emoji ?? ''} ${cat?.name ?? ''}` : type === 'interest' ? '🌱 проценты' : mode === 'income' ? '💰 доход' : '🐷 перевод'
+    onSaved?.(`${editing ? 'Изменено' : 'Записано'}: ${money(tx.amount)} · ${what.trim()}`)
     onClose()
   }
 
   async function remove() {
     if (!editing) return
-    if (!confirm('Удалить запись?')) return
     await db.transactions.delete(initial!.id!)
     onClose()
   }
@@ -170,6 +185,16 @@ export function AddSheet({ open, onClose, data, initial }: Props) {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div>
           <span className="label">Дата</span>
+          <div className="mb-2 flex gap-2">
+            {[
+              ['Сегодня', today()],
+              ['Вчера', toISO(new Date(Date.now() - 86400000))],
+            ].map(([l, d]) => (
+              <button key={d} type="button" onClick={() => setDate(d)} className={`chip py-1 ${date === d ? 'chip-on' : ''}`}>
+                {l}
+              </button>
+            ))}
+          </div>
           <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className="field" />
         </div>
         <div>
@@ -181,11 +206,7 @@ export function AddSheet({ open, onClose, data, initial }: Props) {
       {error && <p className="mt-3 text-sm font-medium text-accent">{error}</p>}
 
       <div className="mt-5 flex gap-3">
-        {editing && (
-          <button type="button" onClick={remove} className="btn-ghost text-accent">
-            Удалить
-          </button>
-        )}
+        {editing && <ConfirmButton label="Удалить" confirmLabel="Точно удалить?" onConfirm={remove} className="btn-ghost text-accent" />}
         <button type="button" onClick={save} className="btn-primary flex-1">
           {editing ? 'Сохранить' : 'Записать'}
         </button>

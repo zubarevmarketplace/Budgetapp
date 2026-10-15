@@ -1,0 +1,17 @@
+import { chromium } from 'playwright-core'
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+const errors = []
+page.on('pageerror', (e) => errors.push(e.message))
+page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
+await page.goto(process.argv[2])
+await page.waitForSelector('text=на ништяки')
+await page.getByRole('button', { name: 'Добавить' }).click()
+await page.getByPlaceholder('0').fill('500')
+await page.getByRole('button', { name: '🛒 Продукты' }).click()
+await page.getByRole('button', { name: 'Записать' }).click()
+await page.waitForSelector('text=Записано:')
+await page.reload()
+await page.waitForSelector('text=на ништяки')
+console.log('persisted after reload:', (await page.locator('main').innerText()).includes('Продукты'), 'errors:', errors)
+await browser.close()

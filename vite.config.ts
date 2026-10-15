@@ -12,6 +12,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      disable: process.env.VITE_DEMO === '1',
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
@@ -25,6 +26,7 @@ export default defineConfig({
         orientation: 'portrait',
         background_color: '#f6f5f2',
         theme_color: '#f6f5f2',
+        shortcuts: [{ name: 'Записать трату', short_name: 'Трата', url: `${base}?add=1`, icons: [{ src: 'pwa-192.png', sizes: '192x192' }] }],
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },

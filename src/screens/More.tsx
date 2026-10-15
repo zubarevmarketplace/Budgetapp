@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import type { Backup } from '../db'
 import { db, exportBackup, importBackup, isBackup, type Category, type CategoryKind } from '../db'
 import { parseAmount } from '../lib/format'
 import type { Data } from '../lib/useData'
@@ -12,6 +13,7 @@ export function More({ data }: { data: Data }) {
   const [msg, setMsg] = useState('')
   const [newCat, setNewCat] = useState({ name: '', emoji: '🍰', kind: 'fun' as CategoryKind })
   const fileRef = useRef<HTMLInputElement>(null)
+  const [pending, setPending] = useState<Backup | null>(null)
 
   async function saveSettings() {
     const limit = Math.max(0, parseAmount(funLimit))
@@ -41,14 +43,19 @@ export function More({ data }: { data: Data }) {
     try {
       const parsed: unknown = JSON.parse(await file.text())
       if (!isBackup(parsed)) throw new Error('Это не файл копии Копилки')
-      if (!confirm(`Заменить все данные копией от ${parsed.exportedAt.slice(0, 10)}? Текущие записи (${data.transactions.length}) будут удалены.`)) return
-      await importBackup(parsed)
-      flash('Данные восстановлены')
+      setPending(parsed)
     } catch (e) {
       flash(e instanceof Error ? e.message : 'Не удалось прочитать файл')
     } finally {
       if (fileRef.current) fileRef.current.value = ''
     }
+  }
+
+  async function confirmImport() {
+    if (!pending) return
+    await importBackup(pending)
+    setPending(null)
+    flash('Данные восстановлены')
   }
 
   async function addCategory() {
@@ -98,6 +105,21 @@ export function More({ data }: { data: Data }) {
           </button>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0])} />
         </div>
+        {pending && (
+          <div className="rounded-xl border border-accent/40 bg-accent-soft p-3 text-sm dark:bg-accent/20">
+            <p>
+              Заменить все данные копией от <b>{pending.exportedAt.slice(0, 10)}</b>? Текущие записи ({data.transactions.length}) будут удалены.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button type="button" onClick={confirmImport} className="btn-accent flex-1 py-2">
+                Да, заменить
+              </button>
+              <button type="button" onClick={() => setPending(null)} className="btn-ghost flex-1 py-2">
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
         {settings.lastBackupAt && <p className="text-xs muted">Последняя копия: {new Date(settings.lastBackupAt).toLocaleDateString('ru-RU')}</p>}
       </section>
 

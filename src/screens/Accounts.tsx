@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { TxDraft } from '../components/AddSheet'
+import { ConfirmButton } from '../components/ConfirmButton'
 import { EmojiPicker } from '../components/EmojiPicker'
 import { Sheet } from '../components/Sheet'
 import { db, type Account, type AccountType } from '../db'
@@ -123,7 +124,6 @@ function AccountSheet({ account, onClose, currentBalance, nextOrder }: { account
 
   async function archive() {
     if (account?.id === undefined) return
-    if (!confirm('Скрыть счёт? История останется.')) return
     await db.accounts.update(account.id, { archived: true })
     onClose()
   }
@@ -156,11 +156,7 @@ function AccountSheet({ account, onClose, currentBalance, nextOrder }: { account
       </div>
       {error && <p className="mt-3 text-sm font-medium text-accent">{error}</p>}
       <div className="mt-5 flex gap-3">
-        {account?.id !== undefined && (
-          <button type="button" onClick={archive} className="btn-ghost text-accent">
-            Скрыть
-          </button>
-        )}
+        {account?.id !== undefined && <ConfirmButton label="Скрыть" confirmLabel="Точно скрыть?" onConfirm={archive} className="btn-ghost text-accent" />}
         <button type="button" onClick={save} className="btn-primary flex-1">
           Сохранить
         </button>

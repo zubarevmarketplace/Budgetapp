@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AddSheet, type TxDraft } from './components/AddSheet'
 import { useData } from './lib/useData'
 import { Accounts } from './screens/Accounts'
@@ -22,8 +22,25 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('home')
   const [sheet, setSheet] = useState<{ open: boolean; draft?: TxDraft }>({ open: false })
 
+  const [toast, setToast] = useState('')
+
   const openAdd = useCallback((draft?: TxDraft) => setSheet({ open: true, draft }), [])
   const closeAdd = useCallback(() => setSheet((s) => ({ ...s, open: false })), [])
+  const onSaved = useCallback((text: string) => {
+    setToast(text)
+    setTimeout(() => setToast(''), 2500)
+  }, [])
+
+  // Ярлык «Записать трату» с домашнего экрана открывает форму сразу.
+  useEffect(() => {
+    if (!data.ready) return
+    const url = new URL(location.href)
+    if (url.searchParams.get('add') === '1') {
+      url.searchParams.delete('add')
+      history.replaceState(null, '', url.pathname + url.hash)
+      openAdd()
+    }
+  }, [data.ready, openAdd])
 
   if (!data.ready) return null
 
@@ -53,7 +70,12 @@ export default function App() {
         </div>
       </nav>
 
-      <AddSheet open={sheet.open} onClose={closeAdd} data={data} initial={sheet.draft} />
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
+          <div className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-ink">{toast}</div>
+        </div>
+      )}
+      <AddSheet open={sheet.open} onClose={closeAdd} onSaved={onSaved} data={data} initial={sheet.draft} />
     </div>
   )
 }
